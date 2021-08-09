@@ -1,5 +1,12 @@
+
 # Command line testing
+
 # Note that on ESP8266 module, pin 0 is high on reboot.  Don't power the solenoid until the init code has been run.
+
+# This code is not designed to be a full system, it is testbench code only to allow for characterising & driving of
+# the solenoid-powered engraver.
+
+# Remember the FET module will need a flyback diode e.g. 1N4007 to protect it from the inductive load on switching
 
 import machine
 import time
@@ -13,9 +20,11 @@ speedBias = 0.01            # ignore any readings below this and don't switch on
 pwmFreq = 1000              # max 1000
 pwmRange = 1023             # Will vary
 
+maxCumulativeOnTime = 2000  # ms
 coolingTime = 4
 
 # Init the PWM - primarily, turn it off if on
+# (code is run on first import)
 pwmPin = PWM(Pin(outputPin))
 pwmPin.freq(pwmFreq)
 pwmPin.duty(0)
@@ -65,7 +74,7 @@ def runGraver(speed, power, duration, pulseLength = defaultPulseLength):
     print("Duration = ", duration, "s")
     print()
 
-    cumulativeOnTime = 0;
+    cumulativeOnTime = 0
 
     if speed >= speedBias:
         startTime = time.ticks_ms()
@@ -80,8 +89,8 @@ def runGraver(speed, power, duration, pulseLength = defaultPulseLength):
 
                 # Guard the solenoid - it doesn't like being energised for long and there's not much detail on actual duty cycles
                 cumulativeOnTime += pulseLength
-                if cumulativeOnTime >= 2000:
-                    print("\n2s on-time reached; cooling...")
+                if cumulativeOnTime >= maxCumulativeOnTime:
+                    print("\n", maxCumulativeOnTime/1000, "s on-time reached; cooling...")
                     duration += coolingTime
                     time.sleep(coolingTime)
                     cumulativeOnTime = 0
