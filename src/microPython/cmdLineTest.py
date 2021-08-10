@@ -45,61 +45,65 @@ pwmPin.duty(0)
 # None
 #
 def runGraver(speed, power, duration, pulseLength = defaultPulseLength):
-    # speed 0.0..1.0
-    if speed < 0.0 or speed > 1.0:
-        print("Error - speed must be in the range 0.0..1.0")
-        return
+    try:
+        # speed 0.0..1.0
+        if speed < 0.0 or speed > 1.0:
+            print("Error - speed must be in the range 0.0..1.0")
+            return
 
-    if power < 0.0 or power > 1.0:
-        print("Error - power must be in the range 0.0..1.0")
-        return
+        if power < 0.0 or power > 1.0:
+            print("Error - power must be in the range 0.0..1.0")
+            return
 
-    # Divide by zero guard
-    if speed > 0.0:
-        offTime = (int)(1000/(maxFreq * speed)) - pulseLength
-    else:
-        # This will be detected in the next test of offTime
-        offTime = 0
+        # Divide by zero guard
+        if speed > 0.0:
+            offTime = (int)(1000/(maxFreq * speed)) - pulseLength
+        else:
+            # This will be detected in the next test of offTime
+            offTime = 0
 
-    duty = (int)(power * pwmRange)
+        duty = (int)(power * pwmRange)
 
-    if offTime <= pulseLength:
-        offTime = pulseLength # 50% overall duty cycle max
-        print("\nOff time throttled")
+        if offTime <= pulseLength:
+            offTime = pulseLength # 50% overall duty cycle max
+            print("\nOff time throttled")
 
-    print()
-    print("On time = ", pulseLength, "ms")
-    print("Off time = ", offTime, "ms")
-    print("SPM = ", (60 * 1000/(pulseLength + offTime)))
-    print("Duration = ", duration, "s")
-    print()
+        print()
+        print("On time = ", pulseLength, "ms")
+        print("Off time = ", offTime, "ms")
+        print("SPM = ", (60 * 1000/(pulseLength + offTime)))
+        print("Duration = ", duration, "s")
+        print()
 
-    cumulativeOnTime = 0
+        cumulativeOnTime = 0
 
-    if speed >= speedBias:
-        startTime = time.ticks_ms()
-        while time.ticks_diff(time.ticks_ms(), startTime) < duration * 1000:
-                # on
-                pwmPin.duty(duty)
-                time.sleep_ms(pulseLength)
-                # Switch off
-                pwmPin.duty(0)
-                # Wait
-                time.sleep_ms(offTime)
+        if speed >= speedBias:
+            startTime = time.ticks_ms()
+            while time.ticks_diff(time.ticks_ms(), startTime) < duration * 1000:
+                    # on
+                    pwmPin.duty(duty)
+                    time.sleep_ms(pulseLength)
+                    # Switch off
+                    pwmPin.duty(0)
+                    # Wait
+                    time.sleep_ms(offTime)
 
-                # Guard the solenoid - it doesn't like being energised for long and there's not much detail on actual duty cycles
-                cumulativeOnTime += pulseLength
-                if cumulativeOnTime >= maxCumulativeOnTime:
-                    print("\n", maxCumulativeOnTime/1000, "s on-time reached; cooling...")
-                    duration += coolingTime
-                    time.sleep(coolingTime)
-                    cumulativeOnTime = 0
-                    print("Continue")
+                    # Guard the solenoid - it doesn't like being energised for long and there's not much detail on actual duty cycles
+                    cumulativeOnTime += pulseLength
+                    if cumulativeOnTime >= maxCumulativeOnTime:
+                        print("\n", maxCumulativeOnTime/1000, "s on-time reached; cooling...")
+                        duration += coolingTime
+                        time.sleep(coolingTime)
+                        cumulativeOnTime = 0
+                        print("Continue")
 
-        print("Duration complete")
+            print("Duration complete")
 
-    else:
-        print("Speed < bias, ignore; exit")
+        else:
+            print("Speed < bias, ignore; exit")
 
-
-    pwmPin.deinit()
+    except KeyboardInterrupt:
+        print("Ctrl-C pressed")
+    
+    finally:
+        pwmPin.deinit()
